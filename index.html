@@ -48,6 +48,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;heigh
 .r-amber::-webkit-slider-thumb{background:#f59e0b} .r-amber{accent-color:#f59e0b}
 .r-rose::-webkit-slider-thumb{background:#f43f5e} .r-rose{accent-color:#f43f5e}
 .r-teal::-webkit-slider-thumb{background:#2dd4bf} .r-teal{accent-color:#2dd4bf}
+.r-orange::-webkit-slider-thumb{background:#f97316} .r-orange{accent-color:#f97316}
 
 /* ── BUTTONS ── */
 .btn-grp{display:flex;gap:7px;flex-wrap:wrap}
@@ -244,6 +245,50 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;heigh
   </div>
 </div>
 
+<!-- ── SECTION 4: TAX ── -->
+<div class="sec-label" style="color:#f97316">🧾 Tax Settings (SWP Phase)</div>
+<div class="g4" style="margin-bottom:14px">
+  <div class="ctrl" style="border-color:#7c2d1244">
+    <div class="ctrl-badge" style="background:#7c2d1244;color:#fb923c">LTCG</div>
+    <div class="ctrl-label">LTCG Rate</div>
+    <div class="val-wrap">
+      <span class="ctrl-value" id="v-ltcg" contenteditable="true" inputmode="decimal" style="color:#fb923c">12.5</span>
+      <span class="val-unit">%</span>
+      <span class="edit-icon">✏️</span>
+    </div>
+    <input type="range" class="r-orange" id="r-ltcg" min="0" max="30" step="0.5" value="12.5"/>
+    <div class="ctrl-hint">Equity MF / Stocks gains tax</div>
+  </div>
+  <div class="ctrl" style="border-color:#7c2d1244">
+    <div class="ctrl-label">LTCG Exemption / yr</div>
+    <div class="val-wrap">
+      <span style="font-size:13px;color:#475569">₹</span>
+      <span class="ctrl-value" id="v-ltcg-ex" contenteditable="true" inputmode="numeric" style="color:#fb923c">1.25L</span>
+      <span class="edit-icon">✏️</span>
+    </div>
+    <input type="range" class="r-orange" id="r-ltcg-ex" min="0" max="500000" step="25000" value="125000"/>
+    <div class="ctrl-hint" id="h-ltcg-ex-raw">= ₹1,25,000 / yr tax-free</div>
+  </div>
+  <div class="ctrl" style="border-color:#7c2d1244">
+    <div class="ctrl-label">STT Rate</div>
+    <div class="val-wrap">
+      <span class="ctrl-value" id="v-stt" contenteditable="true" inputmode="decimal" style="color:#fb923c">0.001</span>
+      <span class="val-unit">%</span>
+      <span class="edit-icon">✏️</span>
+    </div>
+    <input type="range" class="r-orange" id="r-stt" min="0" max="0.1" step="0.001" value="0.001"/>
+    <div class="ctrl-hint">On redemption value (equity MF)</div>
+  </div>
+  <div class="ctrl" style="border-color:#7c2d1244">
+    <div class="ctrl-label">Tax Impact</div>
+    <div class="val-wrap" style="margin-bottom:4px">
+      <span class="ctrl-value" id="v-tax-impact" style="color:#fb923c;font-size:14px">—</span>
+    </div>
+    <div class="ctrl-hint" id="h-tax-detail">Total tax over retirement</div>
+    <div class="ctrl-hint" id="h-tax-gross">Gross SWP yr 1: —</div>
+  </div>
+</div>
+
 <!-- ── LIFE JOURNEY CHART ── -->
 <div class="card" style="margin-bottom:14px">
   <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;flex-wrap:wrap;gap:8px">
@@ -318,9 +363,15 @@ const CPI_Y=[2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025];
 const S={
   age:28, retireAge:55, lifeExp:85,
   lump:1000000, sip:10000, stepUp:0,
-  assetRate:12, assetId:'nifty',   // assetId null = custom rate
+  assetRate:12, assetId:'nifty',
   expense:50000, retRate:8,
   inflation:4.58,
+};
+// Tax state — applies during SWP phase only
+const T={
+  ltcgRate:12.5,      // % LTCG tax on equity gains
+  ltcgExemption:125000, // ₹/yr tax-free LTCG
+  sttRate:0.001,      // % STT on redemption value
 };
 
 // ═══════════════════════════════════════════
@@ -352,7 +403,7 @@ function parseCompact(str){
 function fmtRaw(v){return'= ₹'+v.toLocaleString('en-IN');}
 
 // ═══════════════════════════════════════════
-// SIMULATION
+// SIMULATION (tax-aware)
 // ═══════════════════════════════════════════
 function simulate(){
   const infl  =S.inflation/100;
@@ -361,57 +412,94 @@ function simulate(){
   const accYrs=Math.max(0,S.retireAge-S.age);
   const retYrs=Math.max(0,S.lifeExp-S.retireAge);
   const rows=[];
+  const ltcgR =T.ltcgRate/100;
+  const sttR  =T.sttRate/100;
 
   let corpus=S.lump, curSIP=S.sip;
+  // Track cost basis (total invested) for blended gain ratio at retirement
+  let totalInvested=S.lump;
 
   for(let y=0;y<=accYrs;y++){
     const deflator=Math.pow(1+infl,y);
     rows.push({age:S.age+y,portfolio:corpus,real:corpus/deflator,
-               sipAmt:y<accYrs?curSIP:0,swpAmt:0,
+               sipAmt:y<accYrs?curSIP:0,swpAmt:0,netSwpAmt:0,
+               withdrawnThisYear:0,taxThisYear:0,
                expenseNom:S.expense*deflator,phase:'acc',deflator});
     if(y<accYrs){
       for(let m=0;m<12;m++) corpus=(corpus+curSIP)*(1+mr);
+      totalInvested+=curSIP*12;
       curSIP*=(1+S.stepUp/100);
     }
   }
 
   const peakCorpus=corpus;
   const expAtRetire=S.expense*Math.pow(1+infl,accYrs);
-  let swpCur=expAtRetire;
+  let swpNet=expAtRetire; // net monthly the user actually receives / spends
 
   for(let y=1;y<=retYrs;y++){
-    if(y>1) swpCur*=(1+infl);
-    // Track exact amount actually withdrawn (handles partial year at depletion)
+    if(y>1) swpNet*=(1+infl);
+
+    // Blended gain fraction: what fraction of each rupee withdrawn is gain
+    const gainFraction=Math.max(0,1-totalInvested/Math.max(corpus,1));
+
+    // Solve for gross monthly SWP needed to net the required amount after LTCG + STT
+    // Two-iteration fixed-point: grossSWP = netSWP / (1 - taxFraction(grossSWP))
+    let grossSwpMo=swpNet;
+    for(let iter=0;iter<3;iter++){
+      const annGross=grossSwpMo*12;
+      const gains=annGross*gainFraction;
+      const taxable=Math.max(0,gains-T.ltcgExemption);
+      const tax=taxable*ltcgR + annGross*sttR;
+      const taxFrac=tax/Math.max(annGross,1);
+      grossSwpMo=swpNet/Math.max(0.001,1-taxFrac);
+    }
+    // Annual tax for display
+    const annGross=grossSwpMo*12;
+    const gains=annGross*gainFraction;
+    const taxable=Math.max(0,gains-T.ltcgExemption);
+    const taxThisYear=taxable*ltcgR + annGross*sttR;
+
+    // Month-by-month drawdown using GROSS SWP
     let withdrawnThisYear=0;
     for(let m=0;m<12;m++){
       const growth=corpus*(1+retMR);
-      if(growth<=swpCur){withdrawnThisYear+=growth;corpus=0;break;}
-      corpus=growth-swpCur;withdrawnThisYear+=swpCur;
+      if(growth<=grossSwpMo){withdrawnThisYear+=growth;corpus=0;break;}
+      corpus=growth-grossSwpMo; withdrawnThisYear+=grossSwpMo;
     }
     const depleted=corpus===0;
     const deflator=Math.pow(1+infl,accYrs+y);
     rows.push({age:S.retireAge+y,portfolio:corpus,real:corpus/deflator,
-               sipAmt:0,swpAmt:swpCur,withdrawnThisYear,
-               expenseNom:S.expense*deflator,phase:'ret',deflator,depleted});
+               sipAmt:0,swpAmt:grossSwpMo,netSwpAmt:swpNet,taxThisYear,
+               withdrawnThisYear,expenseNom:S.expense*deflator,
+               phase:'ret',deflator,depleted});
     if(depleted) break;
   }
-  return{rows,peakCorpus,expAtRetire,accYrs,retYrs};
+  return{rows,peakCorpus,expAtRetire,accYrs,retYrs,totalInvested};
 }
 
-// Binary search: max STARTING monthly SWP such that corpus just survives to lifeExp.
-// Accounts for inflation-growing withdrawals. This is the CORRECT ceiling for
-// an inflation-adjusted SWP plan (unlike the perpetuity formula which ignores infl growth).
-function maxSafeSWP(peakCorpus, retRate, infl, retYrs){
+// Binary search: max STARTING NET monthly SWP (what user actually receives)
+// such that corpus reaches ₹0 at lifeExp. Tax-aware: grosses up for LTCG + STT.
+function maxSafeSWP(peakCorpus, totalInvested, retRate, infl, retYrs){
   if(retYrs<=0||peakCorpus<=0) return 0;
   const mr=retRate/100/12, inflR=infl/100;
-  function finalCorpus(swpStart){
-    let c=peakCorpus, swp=swpStart;
+  const ltcgR=T.ltcgRate/100, sttR=T.sttRate/100;
+
+  function finalCorpus(swpNetStart){
+    let c=peakCorpus, swpNet=swpNetStart;
+    const gainFraction=Math.max(0,1-totalInvested/Math.max(peakCorpus,1));
     for(let y=1;y<=retYrs;y++){
-      if(y>1) swp*=(1+inflR);
+      if(y>1) swpNet*=(1+inflR);
+      // Gross up for tax (2 iterations)
+      let grossMo=swpNet;
+      for(let iter=0;iter<2;iter++){
+        const ag=grossMo*12, gains=ag*gainFraction;
+        const tax=Math.max(0,gains-T.ltcgExemption)*ltcgR + ag*sttR;
+        grossMo=swpNet/Math.max(0.001,1-tax/Math.max(ag,1));
+      }
       for(let m=0;m<12;m++){
         const g=c*(1+mr);
-        if(g<=swp){return 0;}
-        c=g-swp;
+        if(g<=grossMo){return 0;}
+        c=g-grossMo;
       }
     }
     return c;
@@ -430,7 +518,7 @@ function maxSafeSWP(peakCorpus, retRate, infl, retYrs){
 let journeyChartInst=null;
 
 function updateAll(){
-  const{rows,peakCorpus,expAtRetire,accYrs}=simulate();
+  const{rows,peakCorpus,expAtRetire,accYrs,totalInvested}=simulate();
   const infl=S.inflation/100;
   const labels=rows.map(r=>String(r.age));
   const nomVals=rows.map(r=>r.portfolio);
@@ -480,7 +568,13 @@ function updateAll(){
               const r=rows[items[0].dataIndex];
               const lines=[];
               if(r.phase==='acc'&&r.sipAmt>0)lines.push('',` Monthly SIP: ${fmtMo(r.sipAmt)}`);
-              if(r.phase==='ret')lines.push('',` Monthly SWP: ${fmtMo(r.swpAmt)}`);
+              if(r.phase==='ret'){
+                lines.push('',` Gross SWP: ${fmtMo(r.swpAmt)}`);
+                if(r.taxThisYear>0){
+                  lines.push(` Net received: ${fmtMo(r.netSwpAmt)}`);
+                  lines.push(` Tax this yr: ${fmt(r.taxThisYear)}`);
+                }
+              }
               return lines;
             }
           }
@@ -540,7 +634,7 @@ function updateAll(){
   // Max safe STARTING SWP: binary-search the highest inflation-growing SWP
   // that drains corpus to exactly ₹0 at lifeExp. This accounts for the fact
   // that withdrawals grow with inflation every year, unlike a fixed perpetuity.
-  const safeSWP=maxSafeSWP(peakCorpus,S.retRate,S.inflation,retYrs);
+  const safeSWP=maxSafeSWP(peakCorpus,totalInvested,S.retRate,S.inflation,retYrs);
   const sustainable=expAtRetire<=safeSWP;
   const totalYrs=S.lifeExp-S.age;
   const finalDeflator=Math.pow(1+infl,totalYrs);
@@ -577,7 +671,9 @@ function updateAll(){
 
   // ── END OF LIFE BOX ──
   const totalSIPContrib=(()=>{let t=S.lump,sn=S.sip;for(let y=0;y<accYrs;y++){t+=sn*12;if(y<accYrs-1)sn*=(1+S.stepUp/100);}return t;})();
-  const totalSWPWithdrawn=rows.filter(r=>r.phase==='ret').reduce((s,r)=>s+(r.withdrawnThisYear||0),0);
+  const totalSWPGross=rows.filter(r=>r.phase==='ret').reduce((s,r)=>s+(r.withdrawnThisYear||0),0);
+  const totalTaxPaid=rows.filter(r=>r.phase==='ret').reduce((s,r)=>s+(r.taxThisYear||0),0);
+  const totalSWPNet=totalSWPGross-totalTaxPaid;
   const eol=lastRow||{portfolio:0,real:0,expenseNom:0};
   const lastRetRow=rows.filter(r=>r.phase==='ret').slice(-1)[0];
 
@@ -586,13 +682,13 @@ function updateAll(){
       <div class="end-cell"><div class="end-cell-label">Final Portfolio (Nominal)</div><div class="end-cell-val" style="color:#6366f1">${fmt(eol.portfolio)}</div><div class="end-cell-sub">At age ${eol.age||S.lifeExp}</div></div>
       <div class="end-cell"><div class="end-cell-label">Final Portfolio (Real · today's ₹)</div><div class="end-cell-val" style="color:#a5b4fc">${fmt(eol.real)}</div><div class="end-cell-sub">Purchasing power in today's money</div></div>
       <div class="end-cell"><div class="end-cell-label">Total SIP Invested</div><div class="end-cell-val" style="color:#94a3b8">${fmt(totalSIPContrib)}</div><div class="end-cell-sub">Lump sum + all contributions</div></div>
-      <div class="end-cell"><div class="end-cell-label">Total SWP Withdrawn</div><div class="end-cell-val" style="color:#10b981">${fmt(totalSWPWithdrawn)}</div><div class="end-cell-sub">Cumulative retirement income</div></div>
+      <div class="end-cell"><div class="end-cell-label">Total Tax Paid (SWP)</div><div class="end-cell-val" style="color:#fb923c">${fmt(totalTaxPaid)}</div><div class="end-cell-sub">LTCG + STT over retirement</div></div>
     </div>
     <div class="end-row">
-      <div class="end-cell"><div class="end-cell-label">Wealth Multiplier</div><div class="end-cell-val" style="color:#fbbf24">${eol.portfolio>0||totalSWPWithdrawn>0?((eol.portfolio+totalSWPWithdrawn)/Math.max(totalSIPContrib,1)).toFixed(1)+'×':'—'}</div><div class="end-cell-sub">(Portfolio + Withdrawn) ÷ Invested</div></div>
-      <div class="end-cell"><div class="end-cell-label">Monthly Expense at End</div><div class="end-cell-val" style="color:#f59e0b">${fmtMo(eol.expenseNom)}</div><div class="end-cell-sub">Inflation-grown from ${fmtMo(S.expense)} today</div></div>
-      <div class="end-cell"><div class="end-cell-label">Monthly SWP at End</div><div class="end-cell-val" style="color:#6ee7b7">${fmtMo(lastRetRow?.swpAmt||0)}</div><div class="end-cell-sub">SWP grown with ${S.inflation}% inflation</div></div>
-      <div class="end-cell"><div class="end-cell-label">Max Safe Starting SWP</div><div class="end-cell-val" style="color:${sustainable?'#10b981':'#f43f5e'}">${fmtMo(safeSWP)}</div><div class="end-cell-sub">Inflation-growing, corpus → ₹0 at age ${S.lifeExp}</div></div>
+      <div class="end-cell"><div class="end-cell-label">Wealth Multiplier</div><div class="end-cell-val" style="color:#fbbf24">${eol.portfolio>0||totalSWPNet>0?((eol.portfolio+totalSWPNet)/Math.max(totalSIPContrib,1)).toFixed(1)+'×':'—'}</div><div class="end-cell-sub">(Portfolio + Net SWP) ÷ Invested</div></div>
+      <div class="end-cell"><div class="end-cell-label">Total Net SWP Received</div><div class="end-cell-val" style="color:#10b981">${fmt(totalSWPNet)}</div><div class="end-cell-sub">Gross ${fmt(totalSWPGross)} − Tax ${fmt(totalTaxPaid)}</div></div>
+      <div class="end-cell"><div class="end-cell-label">Gross SWP at End</div><div class="end-cell-val" style="color:#6ee7b7">${fmtMo(lastRetRow?.swpAmt||0)}</div><div class="end-cell-sub">Net: ${fmtMo(lastRetRow?.netSwpAmt||0)} after tax</div></div>
+      <div class="end-cell"><div class="end-cell-label">Max Safe Starting SWP</div><div class="end-cell-val" style="color:${sustainable?'#10b981':'#f43f5e'}">${fmtMo(safeSWP)}</div><div class="end-cell-sub">Net (after tax), corpus → ₹0 at age ${S.lifeExp}</div></div>
     </div>`;
 
   // ── MILESTONES ──
@@ -621,7 +717,7 @@ function updateAll(){
 
   // subtitle
   document.getElementById('journey-sub').textContent=
-    `${S.assetRate}% acc return · ${S.retRate}% post-ret · ${S.inflation}% inflation · Age ${S.age}–${S.retireAge} SIP → ${S.retireAge}–${S.lifeExp} SWP`;
+    `${S.assetRate}% acc return · ${S.retRate}% post-ret · ${S.inflation}% inflation · LTCG ${T.ltcgRate}% · Age ${S.age}–${S.retireAge} SIP → ${S.retireAge}–${S.lifeExp} SWP`;
 
   // hints
   document.getElementById('h-sipdur').textContent=`${Math.max(0,S.retireAge-S.age)} years of SIP`;
@@ -634,6 +730,17 @@ function updateAll(){
   } else {
     document.getElementById('h-stepup').textContent='Flat SIP throughout';
   }
+
+  // ── TAX IMPACT CARD ──
+  const yr1ret=rows.find(r=>r.phase==='ret');
+  const totalTaxForCard=rows.filter(r=>r.phase==='ret').reduce((s,r)=>s+(r.taxThisYear||0),0);
+  document.getElementById('v-tax-impact').textContent=totalTaxForCard>0?fmt(totalTaxForCard):'₹0';
+  document.getElementById('h-tax-detail').textContent=
+    totalTaxForCard>0
+      ? `LTCG + STT over ${retYrs}-yr retirement`
+      : 'No tax (LTCG 0%, STT 0%)';
+  document.getElementById('h-tax-gross').textContent=
+    yr1ret ? `Yr 1 gross SWP: ${fmtMo(yr1ret.swpAmt)} → net: ${fmtMo(yr1ret.netSwpAmt)}` : '—';
 }
 
 // ═══════════════════════════════════════════
@@ -830,6 +937,18 @@ setupEditable('v-retrate','r-retrate',s=>{const n=parseFloat(s);return(n>=0&&n<=
 bindRange('r-infl',v=>{S.inflation=v;clearScenarioSelection();},v=>v.toFixed(2),'v-infl');
 setupEditable('v-infl','r-infl',s=>{const n=parseFloat(s);return(n>=0&&n<=30)?n:null;},v=>{if(v!==null){S.inflation=v;clearScenarioSelection();}return S.inflation;},v=>v.toFixed(2));
 
+// ── LTCG RATE ──
+bindRange('r-ltcg',v=>{T.ltcgRate=v;},v=>v.toFixed(1),'v-ltcg');
+setupEditable('v-ltcg','r-ltcg',s=>{const n=parseFloat(s);return(n>=0&&n<=30)?n:null;},v=>{if(v!==null)T.ltcgRate=v;return T.ltcgRate;},v=>v.toFixed(1));
+
+// ── LTCG EXEMPTION ──
+bindRange('r-ltcg-ex',v=>{T.ltcgExemption=v;document.getElementById('h-ltcg-ex-raw').textContent='= '+fmtRaw(v)+' / yr tax-free';},v=>fmtCompact(v),'v-ltcg-ex');
+setupEditable('v-ltcg-ex','r-ltcg-ex',s=>parseCompact(s),v=>{if(v!==null){T.ltcgExemption=v;document.getElementById('h-ltcg-ex-raw').textContent='= '+fmtRaw(v)+' / yr tax-free';}return T.ltcgExemption;},v=>fmtCompact(v));
+
+// ── STT RATE ──
+bindRange('r-stt',v=>{T.sttRate=v;},v=>v.toFixed(3),'v-stt');
+setupEditable('v-stt','r-stt',s=>{const n=parseFloat(s);return(n>=0&&n<=0.1)?n:null;},v=>{if(v!==null)T.sttRate=v;return T.sttRate;},v=>v.toFixed(3));
+
 // ═══════════════════════════════════════════
 // CPI BAR CHART
 // ═══════════════════════════════════════════
@@ -863,6 +982,11 @@ buildAssetBtns();
 // Sync initial hint values
 document.getElementById('h-lump-raw').textContent=fmtRaw(S.lump);
 document.getElementById('h-sip-raw').textContent=fmtRaw(S.sip)+'/mo';
+// Sync initial tax display values
+document.getElementById('v-ltcg').textContent=T.ltcgRate.toFixed(1);
+document.getElementById('v-ltcg-ex').textContent=fmtCompact(T.ltcgExemption);
+document.getElementById('v-stt').textContent=T.sttRate.toFixed(3);
+document.getElementById('h-ltcg-ex-raw').textContent='= '+fmtRaw(T.ltcgExemption)+' / yr tax-free';
 updateAll();
 </script>
 </body>
