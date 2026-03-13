@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>India Wealth Life Planner</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',system-ui,sans-serif;background:#070c18;color:#e2e8f0;min-height:100vh;padding:20px 24px 60px;font-size:13px}
+
+.masthead{margin-bottom:24px}
+.masthead h1{font-size:21px;font-weight:700;letter-spacing:-0.5px;background:linear-gradient(120deg,#c7d2fe,#6ee7b7);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.masthead p{color:#475569;font-size:11px;margin-top:3px}
+
+.sec-label{font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.sec-label::after{content:'';flex:1;height:1px;background:#1e293b}
+
+.card{background:#111827;border-radius:14px;padding:16px 18px;border:1px solid #1e293b;margin-bottom:14px}
+.card-title{font-size:9px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px}
+
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+
+/* ── CONTROL CARDS ── */
+.ctrl{background:#0d1526;border-radius:10px;padding:12px 14px;border:1px solid #1e293b;position:relative}
+.ctrl-label{font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px}
+.ctrl-hint{font-size:9px;color:#334155;margin-top:5px;min-height:11px;line-height:1.4}
+.ctrl-badge{position:absolute;top:8px;right:8px;font-size:7px;padding:2px 6px;border-radius:3px;font-weight:700;letter-spacing:0.06em}
+
+/* ── EDITABLE VALUE DISPLAY ── */
+.val-wrap{position:relative;display:flex;align-items:center;gap:6px;margin-bottom:6px;cursor:text}
+.ctrl-value{font-size:16px;font-weight:700;color:#e2e8f0;line-height:1.1;min-width:10px;cursor:text;border-bottom:1px dashed #334155;padding-bottom:1px;transition:border-color 0.15s}
+.ctrl-value:focus{outline:none;border-bottom-color:#6366f1;color:#a5b4fc}
+.ctrl-value[contenteditable="true"]:focus{border-bottom-color:#6366f1}
+.val-unit{font-size:11px;color:#475569;flex-shrink:0;margin-top:1px}
+.edit-icon{font-size:10px;color:#334155;cursor:pointer;opacity:0;transition:opacity 0.15s;flex-shrink:0}
+.ctrl:hover .edit-icon{opacity:1}
+.ctrl-value:focus~.edit-icon{opacity:0}
+
+/* ── RANGE SLIDERS ── */
+input[type=range]{width:100%;cursor:pointer;height:4px;-webkit-appearance:none;appearance:none;background:#1e293b;border-radius:2px;outline:none;margin-top:2px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;cursor:pointer}
+.r-blue::-webkit-slider-thumb{background:#6366f1} .r-blue{accent-color:#6366f1}
+.r-green::-webkit-slider-thumb{background:#10b981} .r-green{accent-color:#10b981}
+.r-purple::-webkit-slider-thumb{background:#a78bfa} .r-purple{accent-color:#a78bfa}
+.r-amber::-webkit-slider-thumb{background:#f59e0b} .r-amber{accent-color:#f59e0b}
+.r-rose::-webkit-slider-thumb{background:#f43f5e} .r-rose{accent-color:#f43f5e}
+.r-teal::-webkit-slider-thumb{background:#2dd4bf} .r-teal{accent-color:#2dd4bf}
+
+/* ── BUTTONS ── */
+.btn-grp{display:flex;gap:7px;flex-wrap:wrap}
+.btn{padding:6px 11px;border-radius:7px;border:1px solid #334155;background:transparent;color:#64748b;font-size:10px;font-weight:600;cursor:pointer;transition:all 0.15s;font-family:inherit;line-height:1.35;text-align:left}
+.btn:hover{border-color:#475569;color:#94a3b8}
+
+/* ── STATS ── */
+.stats-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.stat{flex:1;min-width:130px;background:#0d1526;border-radius:10px;padding:12px 14px;border:1px solid #1e293b}
+.stat-label{font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px}
+.stat-val{font-size:19px;font-weight:700;line-height:1}
+.stat-sub{font-size:10px;color:#334155;margin-top:4px;line-height:1.4}
+
+/* ── ALERTS ── */
+.alert{border-radius:10px;padding:10px 14px;font-size:11px;margin-bottom:14px;display:flex;gap:10px;align-items:flex-start;line-height:1.5}
+.alert.warn{background:#431407;border:1px solid #7c2d12;color:#fca5a5}
+.alert.ok{background:#052e16;border:1px solid #14532d;color:#86efac}
+.alert.info{background:#0c1a3a;border:1px solid #1e3a8a;color:#93c5fd}
+.alert-ico{font-size:15px;flex-shrink:0}
+
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;font-size:11px}
+.tbl th{text-align:left;color:#334155;font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:0.07em;padding:0 10px 8px 0;border-bottom:1px solid #1e293b}
+.tbl td{padding:8px 10px 8px 0;border-bottom:1px solid #0d1526;vertical-align:middle}
+.tbl tr:last-child td{border:none}
+.phase-pill{display:inline-block;font-size:8px;font-weight:700;padding:2px 6px;border-radius:4px;letter-spacing:0.05em;text-transform:uppercase}
+.pill-acc{background:#1e3a8a22;color:#6366f1;border:1px solid #1e3a8a55}
+.pill-ret{background:#06402422;color:#10b981;border:1px solid #06402455}
+
+/* ── END BOX ── */
+.end-box{background:#0d1526;border-radius:12px;padding:16px 18px;border:1px solid #1e293b;margin-bottom:14px}
+.end-box-title{font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:12px}
+.end-row{display:flex;gap:0;border-radius:8px;overflow:hidden;margin-bottom:8px}
+.end-cell{flex:1;padding:10px 14px;background:#111827}
+.end-cell+.end-cell{border-left:1px solid #0d1526}
+.end-cell-label{font-size:9px;color:#475569;margin-bottom:3px}
+.end-cell-val{font-size:16px;font-weight:700}
+.end-cell-sub{font-size:9px;color:#334155;margin-top:2px}
+
+#journeyChart{max-height:380px}
+#barChart{max-height:130px}
+
+/* ── ASSET RETURN CTRL: slider + buttons together ── */
+.asset-ctrl{display:flex;flex-direction:column;gap:6px}
+.asset-rate-row{display:flex;align-items:center;gap:8px}
+.asset-rate-label{font-size:9px;color:#64748b;white-space:nowrap}
+
+/* ── INFL CTRL: buttons + manual input ── */
+.infl-input-wrap{display:flex;align-items:center;gap:4px;margin-top:6px}
+.infl-input{background:#111827;border:1px solid #334155;border-radius:5px;color:#f59e0b;font-size:14px;font-weight:700;font-family:'DM Sans',sans-serif;width:52px;padding:3px 5px;text-align:right;outline:none}
+.infl-input:focus{border-color:#f59e0b}
+.infl-unit{font-size:11px;color:#64748b}
+
+@media(max-width:800px){.g4{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:500px){.g3,.g4{grid-template-columns:1fr}.stats-row{flex-direction:column}.end-row{flex-direction:column}}
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <h1>🇮🇳 India Wealth Life Planner</h1>
+  <p>SIP accumulation · Step-up · Inflation-adjusted SWP · Click any value to edit directly</p>
+</div>
+
+<!-- ── SECTION 1: YOU ── -->
+<div class="sec-label" style="color:#6366f1">👤 About You</div>
+<div class="g3" style="margin-bottom:14px">
+  <div class="ctrl" style="border-color:#1e3a8a44">
+    <div class="ctrl-label">Current Age</div>
+    <div class="val-wrap">
+      <span class="ctrl-value" id="v-age" contenteditable="true" inputmode="numeric">28</span>
+      <span class="val-unit">yrs</span>
+      <span class="edit-icon">✏️</span>
+    </div>
+    <input type="range" class="r-blue" id="r-age" min="18" max="70" step="1" value="28"/>
+    <div class="ctrl-hint" id="h-sipdur">27 years of SIP</div>
+  </div>
+  <div class="ctrl" style="border-color:#1e3a8a44">
+    <div class="ctrl-label">Retirement Age (stop SIP)</div>
+    <div class="val-wrap">
+      <span class="ctrl-value" id="v-retire" contenteditable="true" inputmode="numeric">55</span>
+      <span class="val-unit">yrs</span>
+      <span class="edit-icon">✏️</span>
+    </div>
+    <input type="range" class="r-blue" id="r-retire" min="25" max="80" step="1" value="55"/>
+    <div class="ctrl-hint" id="h-retdur">30 years of retirement</div>
+  </div>
+  <div class="ctrl" style="border-color:#f43f5e33">
+    <div class="ctrl-label">Life Expectancy</div>
+    <div class="val-wrap">
+      <span class="ctrl-value" id="v-life" contenteditable="true" inputmode="numeric" style="color:#fb7185">85</span>
+      <span class="val-unit">yrs</span>
+      <span class="edit-icon">✏️</span>
+    </div>
+    <input type="range" class="r-rose" id="r-life" min="60" max="110" step="1" value="85"/>
+  </div>
+</div>
+
+<!-- ── SECTION 2: ACCUMULATION ── -->
+<div class="sec-label" style="color:#6366f1">📈 Accumulation — SIP Phase</div>
+<div class="g4" style="margin-bottom:14px">
+  <div class="ctrl" style="border-color:#1e3a8a44">
+    <div class="ctrl-label">Lump Sum Today</div>
+    <div class="val-wrap">
+      <span style="font-size:13px;color:#475569">₹</span>
+      <span class="ctrl-value" id="v-lump" contenteditable="true" inputmode="numeric">10L</span>
+      <span class="edit-icon">✏️</span>
+    </div>
+    <input type="range" class="r-blue" id="r-lump" min="0" max="100000000" step="100000" value="1000000"/>
+    <div class="ctrl-hint" id="h-lump-raw">= ₹10,00,000</div>
+  </div>
+  <div class="ctrl" style="border-color:#1e3a8a44">
+    <div class="ctrl-label">Monthly SIP</div>
+    <div class="val-wrap">
+      <span style="font-size:13px;color:#475569">₹</span>
+      <span class="ctrl-value" id="v-sip" contenteditable="true" inputmode="numeric">10K</span>
+      <span class="val-unit">/mo</span>
+      <span class="edit-icon">✏️</span>
+    </div>
+    <input type="range" class="r-blue" id="r-sip" min="0" max="1000000" step="5000" value="10000"/>
+    <div class="ctrl-hint" id="h-sip-raw">= ₹10,000/mo</div>
+  </div>
+  <div class="ctrl" style="border-color:#7c3aed44">
+    <div class="ctrl-badge" style="background:#4c1d9544;color:#a78bfa">STEP-UP</div>
+    <div class="ctrl-label">Annual SIP Increase</div>
+    <div class="val-wrap">
+      <span class="ctrl-value" id="v-stepup" contenteditable="true" inputmode="numeric" style="color:#a5b4fc">0</span>
+      <span class="val-unit">% / yr</span>
+      <span class="edit-icon">✏️</span>
+    </div>
+    <input type="range" class="r-purple" id="r-stepup" min="0" max="30" step="1" value="0"/>
+    <div class="ctrl-hint" id="h-stepup">Flat SIP throughout</div>
+  </div>
+  <div class="ctrl" style="border-color:#1e3a8a44">
+    <div class="ctrl-label">Accumulation Return Rate</div>
+    <div class="val-wrap">
+      <span class="ctrl-value" id="v-asset-rate" contenteditable="true" inputmode="decimal" style="color:#34d399">12</span>
+      <span class="val-unit">% / yr</span>
+      <span class="edit-icon">✏️</span>
+    </div>
+    <input type="range" class="r-teal" id="r-asset-rate" min="0" max="30" step="0.5" value="12"/>
+    <div class="ctrl-hint" style="margin-bottom:6px" id="h-asset-hint">Nifty 50 historical avg</div>
+    <div class="btn-grp" id="asset-btns"></div>
+  </div>
+</div>
+
+<!-- ── SECTION 3: EXPENSES + RETIREMENT ── -->
+<div class="sec-label" style="color:#10b981">💸 Expenses & Retirement</div>
+<div class="g4" style="margin-bottom:14px">
+  <div class="ctrl" style="border-color:#06402444">
+    <div class="ctrl-label">Current Monthly Expense</div>
+    <div class="val-wrap">
+      <span style="font-size:13px;color:#475569">₹</span>
+      <span class="ctrl-value" id="v-expense" contenteditable="true" inputmode="numeric">50K</span>
+      <span class="val-unit">/mo</span>
+      <span class="edit-icon">✏️</span>
+    </div>
+    <input type="range" class="r-green" id="r-expense" min="5000" max="1000000" step="5000" value="50000"/>
+    <div class="ctrl-hint" id="h-exp-retire">At retirement: computing...</div>
+  </div>
+  <div class="ctrl" style="border-color:#06402444">
+    <div class="ctrl-label">Post-Retirement Return</div>
+    <div class="val-wrap">
+      <span class="ctrl-value" id="v-retrate" contenteditable="true" inputmode="decimal" style="color:#10b981">8</span>
+      <span class="val-unit">% / yr</span>
+      <span class="edit-icon">✏️</span>
+    </div>
+    <input type="range" class="r-green" id="r-retrate" min="0" max="30" step="0.5" value="8"/>
+    <div class="ctrl-hint">Conservative (debt-heavy) post-retirement</div>
+  </div>
+  <div class="ctrl" style="border-color:#f59e0b44">
+    <div class="ctrl-label">Inflation Rate</div>
+    <div class="val-wrap">
+      <span class="ctrl-value" id="v-infl" contenteditable="true" inputmode="decimal" style="color:#f59e0b">4.58</span>
+      <span class="val-unit">% / yr</span>
+      <span class="edit-icon">✏️</span>
+    </div>
+    <input type="range" class="r-amber" id="r-infl" min="0" max="20" step="0.1" value="4.58"/>
+    <div class="btn-grp" id="scenario-btns" style="margin-top:8px">
+      <button class="btn" data-inf="4.0"  data-col="#10b981">4%</button>
+      <button class="btn" data-inf="4.58" data-col="#f59e0b">4.58%</button>
+      <button class="btn" data-inf="5.5"  data-col="#f97316">5.5%</button>
+      <button class="btn" data-inf="7.0"  data-col="#ef4444">7%</button>
+    </div>
+  </div>
+  <div class="ctrl" style="border-color:#06402444">
+    <div class="ctrl-label">SWP Grows With</div>
+    <div class="val-wrap" style="margin-bottom:4px">
+      <span class="ctrl-value" style="color:#6ee7b7;font-size:14px">= Inflation</span>
+    </div>
+    <div style="font-size:10px;color:#334155;line-height:1.5">
+      SWP starts at your inflation-adjusted expense at retirement and increases each year with inflation. No manual override needed.
+    </div>
+  </div>
+</div>
+
+<!-- ── LIFE JOURNEY CHART ── -->
+<div class="card" style="margin-bottom:14px">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+    <div>
+      <div class="card-title" style="margin-bottom:2px">🗺️ Life Wealth Journey</div>
+      <div id="journey-sub" style="font-size:10px;color:#334155"></div>
+    </div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center">
+      <span style="font-size:10px;color:#6366f1;display:flex;align-items:center;gap:5px"><span style="width:18px;height:3px;background:#6366f1;display:inline-block;border-radius:2px"></span>Nominal</span>
+      <span style="font-size:10px;color:#94a3b8;display:flex;align-items:center;gap:5px"><span style="width:18px;height:2px;border-top:2px dashed #94a3b8;display:inline-block"></span>Real (today ₹)</span>
+      <span style="font-size:10px;color:#f59e0b;display:flex;align-items:center;gap:5px"><span style="width:18px;height:2px;border-top:2px dotted #f59e0b;display:inline-block"></span>Monthly expense</span>
+    </div>
+  </div>
+  <canvas id="journeyChart"></canvas>
+</div>
+
+<!-- ── STATS ── -->
+<div class="stats-row" id="stats-row"></div>
+<div id="alert-box"></div>
+
+<!-- ── END OF LIFE SUMMARY ── -->
+<div class="end-box">
+  <div class="end-box-title">📊 End of Life Summary</div>
+  <div id="end-content"></div>
+</div>
+
+<!-- ── MILESTONE TABLE ── -->
+<div class="card" style="margin-bottom:14px">
+  <div class="card-title">Milestone Checkpoint Table</div>
+  <div style="overflow-x:auto">
+  <table class="tbl">
+    <thead><tr>
+      <th>Phase</th><th>Age</th>
+      <th>Portfolio Nominal</th><th>Portfolio Real (today ₹)</th>
+      <th>Monthly SIP / SWP</th><th>Monthly Expense</th><th>Note</th>
+    </tr></thead>
+    <tbody id="milestone-body"></tbody>
+  </table>
+  </div>
+</div>
+
+<!-- ── CPI HISTORY ── -->
+<div class="card">
+  <div class="card-title">India CPI Inflation History 2015–2025</div>
+  <canvas id="barChart"></canvas>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:10px">
+    <span style="color:#10b981">● 5yr avg 4.58%</span>
+    <span style="color:#06b6d4">● 2025: 3.77%</span>
+    <span style="color:#6366f1">● RBI target 4%</span>
+    <span style="color:#ef4444">● Hist avg 7.37%</span>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// ASSETS
+// ═══════════════════════════════════════════
+const ASSETS=[
+  {id:'fd',    label:'FD',       r:7.0,  color:'#94a3b8'},
+  {id:'debt',  label:'Debt MF',  r:7.5,  color:'#60a5fa'},
+  {id:'hybrid',label:'Hybrid',   r:10.5, color:'#a78bfa'},
+  {id:'nifty', label:'Nifty 50', r:12.0, color:'#34d399'},
+  {id:'small', label:'SmallCap', r:14.0, color:'#fb923c'},
+  {id:'gold',  label:'Gold',     r:8.5,  color:'#fbbf24'},
+];
+const CPI_H=[4.91,4.94,2.49,4.86,3.73,6.62,5.13,6.70,5.65,4.67,3.77];
+const CPI_Y=[2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025];
+
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+const S={
+  age:28, retireAge:55, lifeExp:85,
+  lump:1000000, sip:10000, stepUp:0,
+  assetRate:12, assetId:'nifty',   // assetId null = custom rate
+  expense:50000, retRate:8,
+  inflation:4.58,
+};
+
+// ═══════════════════════════════════════════
+// FORMAT HELPERS
+// ═══════════════════════════════════════════
+function fmt(v){
+  if(!isFinite(v)||isNaN(v)||v<0)return'₹0';
+  if(v>=10000000)return'₹'+(v/10000000).toFixed(2)+'Cr';
+  if(v>=100000)return'₹'+(v/100000).toFixed(1)+'L';
+  return'₹'+(v/1000).toFixed(0)+'K';
+}
+function fmtMo(v){return fmt(v)+'/mo';}
+// Compact display for editable value spans
+function fmtCompact(v){
+  if(v>=10000000)return(v/10000000).toFixed(2)+'Cr';
+  if(v>=100000)return(v/100000).toFixed(1)+'L';
+  if(v>=1000)return(v/1000).toFixed(0)+'K';
+  return String(v);
+}
+function parseCompact(str){
+  // Parse user input: accepts "10L", "1.5Cr", "50000", "50K", "10,00,000"
+  const s=str.replace(/₹/g,'').replace(/,/g,'').trim().toUpperCase();
+  if(s.endsWith('CR'))return parseFloat(s)*10000000;
+  if(s.endsWith('L'))return parseFloat(s)*100000;
+  if(s.endsWith('K'))return parseFloat(s)*1000;
+  const n=parseFloat(s);
+  return isNaN(n)?null:n;
+}
+function fmtRaw(v){return'= ₹'+v.toLocaleString('en-IN');}
+
+// ═══════════════════════════════════════════
+// SIMULATION
+// ═══════════════════════════════════════════
+function simulate(){
+  const infl  =S.inflation/100;
+  const mr    =S.assetRate/100/12;
+  const retMR =S.retRate/100/12;
+  const accYrs=Math.max(0,S.retireAge-S.age);
+  const retYrs=Math.max(0,S.lifeExp-S.retireAge);
+  const rows=[];
+
+  let corpus=S.lump, curSIP=S.sip;
+
+  for(let y=0;y<=accYrs;y++){
+    const deflator=Math.pow(1+infl,y);
+    rows.push({age:S.age+y,portfolio:corpus,real:corpus/deflator,
+               sipAmt:y<accYrs?curSIP:0,swpAmt:0,
+               expenseNom:S.expense*deflator,phase:'acc',deflator});
+    if(y<accYrs){
+      for(let m=0;m<12;m++) corpus=(corpus+curSIP)*(1+mr);
+      curSIP*=(1+S.stepUp/100);
+    }
+  }
+
+  const peakCorpus=corpus;
+  const expAtRetire=S.expense*Math.pow(1+infl,accYrs);
+  let swpCur=expAtRetire;
+
+  for(let y=1;y<=retYrs;y++){
+    if(y>1) swpCur*=(1+infl);
+    // Track exact amount actually withdrawn (handles partial year at depletion)
+    let withdrawnThisYear=0;
+    for(let m=0;m<12;m++){
+      const growth=corpus*(1+retMR);
+      if(growth<=swpCur){withdrawnThisYear+=growth;corpus=0;break;}
+      corpus=growth-swpCur;withdrawnThisYear+=swpCur;
+    }
+    const depleted=corpus===0;
+    const deflator=Math.pow(1+infl,accYrs+y);
+    rows.push({age:S.retireAge+y,portfolio:corpus,real:corpus/deflator,
+               sipAmt:0,swpAmt:swpCur,withdrawnThisYear,
+               expenseNom:S.expense*deflator,phase:'ret',deflator,depleted});
+    if(depleted) break;
+  }
+  return{rows,peakCorpus,expAtRetire,accYrs,retYrs};
+}
+
+// Binary search: max STARTING monthly SWP such that corpus just survives to lifeExp.
+// Accounts for inflation-growing withdrawals. This is the CORRECT ceiling for
+// an inflation-adjusted SWP plan (unlike the perpetuity formula which ignores infl growth).
+function maxSafeSWP(peakCorpus, retRate, infl, retYrs){
+  if(retYrs<=0||peakCorpus<=0) return 0;
+  const mr=retRate/100/12, inflR=infl/100;
+  function finalCorpus(swpStart){
+    let c=peakCorpus, swp=swpStart;
+    for(let y=1;y<=retYrs;y++){
+      if(y>1) swp*=(1+inflR);
+      for(let m=0;m<12;m++){
+        const g=c*(1+mr);
+        if(g<=swp){return 0;}
+        c=g-swp;
+      }
+    }
+    return c;
+  }
+  let lo=0, hi=peakCorpus*(retRate/100/12)*3;
+  for(let i=0;i<64;i++){
+    const mid=(lo+hi)/2;
+    finalCorpus(mid)>0 ? lo=mid : hi=mid;
+  }
+  return lo;
+}
+
+// ═══════════════════════════════════════════
+// CHART
+// ═══════════════════════════════════════════
+let journeyChartInst=null;
+
+function updateAll(){
+  const{rows,peakCorpus,expAtRetire,accYrs}=simulate();
+  const infl=S.inflation/100;
+  const labels=rows.map(r=>String(r.age));
+  const nomVals=rows.map(r=>r.portfolio);
+  const realVals=rows.map(r=>r.real);
+  const expVals=rows.map(r=>r.expenseNom);
+  const retIdx=rows.findIndex(r=>r.age===S.retireAge);
+
+  if(journeyChartInst) journeyChartInst.destroy();
+  const ctx=document.getElementById('journeyChart').getContext('2d');
+  const gradAcc=ctx.createLinearGradient(0,0,0,400);
+  gradAcc.addColorStop(0,'#6366f130');gradAcc.addColorStop(1,'#6366f105');
+
+  journeyChartInst=new Chart(ctx,{
+    type:'line',
+    data:{labels,datasets:[
+      {label:'Portfolio (Nominal)',data:nomVals,yAxisID:'yLeft',
+       borderColor:'#6366f1',borderWidth:2.5,pointRadius:0,tension:0.3,
+       fill:true,backgroundColor:gradAcc,
+       segment:{
+         borderColor:c=>{const i=c.p0DataIndex;return(rows[i]&&rows[i].phase==='ret')?'#10b981':'#6366f1';},
+         backgroundColor:c=>{const i=c.p0DataIndex;return(rows[i]&&rows[i].phase==='ret')?'#10b98110':'#6366f110';}
+       }},
+      {label:"Real (today's ₹)",data:realVals,yAxisID:'yLeft',
+       borderColor:'#94a3b8',borderWidth:1.5,pointRadius:0,tension:0.3,
+       borderDash:[6,4],backgroundColor:'transparent'},
+      {label:'Monthly Expense',data:expVals,yAxisID:'yRight',
+       borderColor:'#f59e0b',borderWidth:1.2,pointRadius:0,tension:0.2,
+       borderDash:[3,5],backgroundColor:'transparent'},
+    ]},
+    options:{
+      responsive:true,interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          backgroundColor:'#0f172a',borderColor:'#334155',borderWidth:1,
+          titleColor:'#94a3b8',bodyColor:'#e2e8f0',padding:10,
+          callbacks:{
+            title:items=>{const r=rows[items[0].dataIndex];return`Age ${r.age}  ·  ${r.phase==='acc'?'📈 Accumulating':'💸 Withdrawing'}`;},
+            label:item=>{
+              const r=rows[item.dataIndex];
+              if(item.datasetIndex===0)return` Portfolio: ${fmt(r.portfolio)}`;
+              if(item.datasetIndex===1)return` Real value: ${fmt(r.real)}`;
+              if(item.datasetIndex===2)return` Monthly expense: ${fmtMo(r.expenseNom)}`;
+              return'';
+            },
+            afterBody:items=>{
+              const r=rows[items[0].dataIndex];
+              const lines=[];
+              if(r.phase==='acc'&&r.sipAmt>0)lines.push('',` Monthly SIP: ${fmtMo(r.sipAmt)}`);
+              if(r.phase==='ret')lines.push('',` Monthly SWP: ${fmtMo(r.swpAmt)}`);
+              return lines;
+            }
+          }
+        }
+      },
+      scales:{
+        x:{ticks:{color:'#475569',font:{size:10},maxTicksLimit:14},grid:{color:'#111827'}},
+        yLeft:{position:'left',ticks:{color:'#475569',font:{size:10},callback:v=>fmt(v)},grid:{color:'#1e293b'},
+          title:{display:true,text:'Portfolio Value',color:'#334155',font:{size:9}}},
+        yRight:{position:'right',ticks:{color:'#78716c',font:{size:9},callback:v=>fmt(v)},grid:{drawOnChartArea:false},
+          title:{display:true,text:'Monthly Expense',color:'#78716c',font:{size:9}}}
+      }
+    },
+    plugins:[{
+      id:'retLine',
+      afterDraw(ch){
+        if(retIdx<0)return;
+        const{ctx:c,scales:{x,yLeft}}=ch;
+        const xp=x.getPixelForValue(String(S.retireAge));
+        c.save();
+        c.strokeStyle='#f59e0b88';c.lineWidth=1.5;c.setLineDash([5,4]);
+        c.beginPath();c.moveTo(xp,yLeft.top);c.lineTo(xp,yLeft.bottom);c.stroke();
+        c.setLineDash([]);
+        c.fillStyle='#f59e0b22';c.strokeStyle='#f59e0b55';c.lineWidth=1;
+        const lbl=`↓ Retire ${S.retireAge}`;
+        c.font='bold 9px DM Sans';c.textAlign='center';
+        const tw=c.measureText(lbl).width;
+        const rx=xp-tw/2-6,ry=yLeft.top+6,rw=tw+12,rh=18,rad=3;
+        c.beginPath();
+        c.moveTo(rx+rad,ry);c.lineTo(rx+rw-rad,ry);c.arcTo(rx+rw,ry,rx+rw,ry+rad,rad);
+        c.lineTo(rx+rw,ry+rh-rad);c.arcTo(rx+rw,ry+rh,rx+rw-rad,ry+rh,rad);
+        c.lineTo(rx+rad,ry+rh);c.arcTo(rx,ry+rh,rx,ry+rh-rad,rad);
+        c.lineTo(rx,ry+rad);c.arcTo(rx,ry,rx+rad,ry,rad);c.closePath();
+        c.fill();c.stroke();
+        c.fillStyle='#fbbf24';c.textBaseline='middle';
+        c.fillText(lbl,xp,yLeft.top+15);
+        c.restore();
+      }
+    },{
+      id:'phaseLabels',
+      afterDraw(ch){
+        const{ctx:c,scales:{x,yLeft}}=ch;
+        c.save();c.font='bold 9px DM Sans';c.textBaseline='top';
+        c.fillStyle='#6366f155';c.textAlign='left';
+        c.fillText('SIP PHASE',x.left+6,yLeft.top+6);
+        if(retIdx>=0){c.fillStyle='#10b98155';c.textAlign='right';c.fillText('SWP PHASE',x.right-6,yLeft.top+6);}
+        c.restore();
+      }
+    }]
+  });
+
+  // ── STATS ──
+  const lastRow=rows[rows.length-1];
+  const depleted=rows.some(r=>r.depleted);
+  const depletedAt=rows.find(r=>r.depleted)?.age;
+  const retYrs=Math.max(0,S.lifeExp-S.retireAge);
+  // Max safe STARTING SWP: binary-search the highest inflation-growing SWP
+  // that drains corpus to exactly ₹0 at lifeExp. This accounts for the fact
+  // that withdrawals grow with inflation every year, unlike a fixed perpetuity.
+  const safeSWP=maxSafeSWP(peakCorpus,S.retRate,S.inflation,retYrs);
+  const sustainable=expAtRetire<=safeSWP;
+  const totalYrs=S.lifeExp-S.age;
+  const finalDeflator=Math.pow(1+infl,totalYrs);
+
+  const retireDeflator=Math.pow(1+infl,accYrs);
+  // Real (today's ₹) values for the two SWP stats
+  const expAtRetireReal=expAtRetire/retireDeflator;   // your SWP deflated back
+  const safeSWPReal=safeSWP/retireDeflator;           // ceiling deflated back
+
+  document.getElementById('stats-row').innerHTML=[
+    {label:`Peak Corpus at ${S.retireAge}`,val:fmt(peakCorpus),
+     sub:`Real: ${fmt(peakCorpus/retireDeflator)} in today's ₹`,color:'#6366f1'},
+    {label:'Your SWP at Retirement',val:fmtMo(expAtRetire),
+     sub:`Nominal at age ${S.retireAge} · Today's ₹: ${fmtMo(expAtRetireReal)}`,color:'#10b981'},
+    {label:`Max Safe SWP (${retYrs}yr, infl-adj)`,val:fmtMo(safeSWP),
+     sub:`Today's ₹: ${fmtMo(safeSWPReal)} · Corpus → ₹0 at age ${S.lifeExp}`,
+     sub2:`vs current expense ${fmtMo(S.expense)} · headroom: ${fmtMo(Math.max(0,safeSWPReal-S.expense))}`,
+     color:sustainable?'#10b981':'#f43f5e'},
+    {label:depleted?`⚠️ Depletes`:`Portfolio at ${lastRow?.age||S.lifeExp}`,
+     val:depleted?`Age ${depletedAt}`:fmt(lastRow?.portfolio||0),
+     sub:depleted?`${S.lifeExp-depletedAt} yrs short of life exp`:`Real: ${fmt((lastRow?.portfolio||0)/finalDeflator)}`,
+     color:depleted?'#f43f5e':sustainable?'#10b981':'#f59e0b'},
+  ].map(s=>`<div class="stat"><div class="stat-label">${s.label}</div><div class="stat-val" style="color:${s.color}">${s.val}</div><div class="stat-sub">${s.sub}</div>${s.sub2?`<div class="stat-sub" style="margin-top:2px;color:#475569">${s.sub2}</div>`:''}</div>`).join('');
+
+  // ── ALERT ──
+  const ab=document.getElementById('alert-box');
+  if(depleted){
+    ab.innerHTML=`<div class="alert warn"><div class="alert-ico">⚠️</div><div><strong>Corpus runs out at age ${depletedAt}</strong> — ${S.lifeExp-depletedAt} years before life expectancy. Your SWP (${fmtMo(expAtRetire)}) exceeds the max safe rate (${fmtMo(safeSWP)}). Fix: increase SIP, delay retirement, or reduce expenses.</div></div>`;
+  } else if(sustainable){
+    ab.innerHTML=`<div class="alert ok"><div class="alert-ico">✅</div><div><strong>Plan is sustainable.</strong> Your SWP (${fmtMo(expAtRetire)}) is within the max safe rate (${fmtMo(safeSWP)}) for a ${retYrs}-year inflation-growing retirement. Legacy corpus at age ${lastRow?.age}: ${fmt(lastRow?.portfolio||0)}.</div></div>`;
+  } else {
+    ab.innerHTML=`<div class="alert info"><div class="alert-ico">ℹ️</div><div><strong>Portfolio survives to age ${lastRow?.age||S.lifeExp} but is under pressure.</strong> Your SWP (${fmtMo(expAtRetire)}) exceeds the max safe starting rate (${fmtMo(safeSWP)}) — corpus will deplete before life expectancy at this trajectory.</div></div>`;
+  }
+
+  // ── END OF LIFE BOX ──
+  const totalSIPContrib=(()=>{let t=S.lump,sn=S.sip;for(let y=0;y<accYrs;y++){t+=sn*12;if(y<accYrs-1)sn*=(1+S.stepUp/100);}return t;})();
+  const totalSWPWithdrawn=rows.filter(r=>r.phase==='ret').reduce((s,r)=>s+(r.withdrawnThisYear||0),0);
+  const eol=lastRow||{portfolio:0,real:0,expenseNom:0};
+  const lastRetRow=rows.filter(r=>r.phase==='ret').slice(-1)[0];
+
+  document.getElementById('end-content').innerHTML=`
+    <div class="end-row">
+      <div class="end-cell"><div class="end-cell-label">Final Portfolio (Nominal)</div><div class="end-cell-val" style="color:#6366f1">${fmt(eol.portfolio)}</div><div class="end-cell-sub">At age ${eol.age||S.lifeExp}</div></div>
+      <div class="end-cell"><div class="end-cell-label">Final Portfolio (Real · today's ₹)</div><div class="end-cell-val" style="color:#a5b4fc">${fmt(eol.real)}</div><div class="end-cell-sub">Purchasing power in today's money</div></div>
+      <div class="end-cell"><div class="end-cell-label">Total SIP Invested</div><div class="end-cell-val" style="color:#94a3b8">${fmt(totalSIPContrib)}</div><div class="end-cell-sub">Lump sum + all contributions</div></div>
+      <div class="end-cell"><div class="end-cell-label">Total SWP Withdrawn</div><div class="end-cell-val" style="color:#10b981">${fmt(totalSWPWithdrawn)}</div><div class="end-cell-sub">Cumulative retirement income</div></div>
+    </div>
+    <div class="end-row">
+      <div class="end-cell"><div class="end-cell-label">Wealth Multiplier</div><div class="end-cell-val" style="color:#fbbf24">${eol.portfolio>0||totalSWPWithdrawn>0?((eol.portfolio+totalSWPWithdrawn)/Math.max(totalSIPContrib,1)).toFixed(1)+'×':'—'}</div><div class="end-cell-sub">(Portfolio + Withdrawn) ÷ Invested</div></div>
+      <div class="end-cell"><div class="end-cell-label">Monthly Expense at End</div><div class="end-cell-val" style="color:#f59e0b">${fmtMo(eol.expenseNom)}</div><div class="end-cell-sub">Inflation-grown from ${fmtMo(S.expense)} today</div></div>
+      <div class="end-cell"><div class="end-cell-label">Monthly SWP at End</div><div class="end-cell-val" style="color:#6ee7b7">${fmtMo(lastRetRow?.swpAmt||0)}</div><div class="end-cell-sub">SWP grown with ${S.inflation}% inflation</div></div>
+      <div class="end-cell"><div class="end-cell-label">Max Safe Starting SWP</div><div class="end-cell-val" style="color:${sustainable?'#10b981':'#f43f5e'}">${fmtMo(safeSWP)}</div><div class="end-cell-sub">Inflation-growing, corpus → ₹0 at age ${S.lifeExp}</div></div>
+    </div>`;
+
+  // ── MILESTONES ──
+  const milestones=[];
+  for(let y=0;y<=accYrs;y+=5){const r=rows.find(x=>x.age===S.age+y);if(r)milestones.push(r);}
+  const retRow=rows.find(r=>r.age===S.retireAge);
+  if(retRow&&!milestones.find(m=>m.age===S.retireAge))milestones.push(retRow);
+  for(let y=5;y<=S.lifeExp-S.retireAge;y+=5){const r=rows.find(x=>x.age===S.retireAge+y);if(r)milestones.push(r);}
+  if(lastRow&&!milestones.find(m=>m.age===lastRow.age))milestones.push(lastRow);
+  milestones.sort((a,b)=>a.age-b.age);
+
+  document.getElementById('milestone-body').innerHTML=milestones.map(r=>{
+    const pill=r.phase==='acc'?'<span class="phase-pill pill-acc">SIP</span>':'<span class="phase-pill pill-ret">SWP</span>';
+    const note=r.age===S.retireAge?'🎯 Retirement starts':r.portfolio<500000&&r.phase==='ret'?'⚠️ Low corpus':r.age===lastRow?.age?'🏁 End of journey':'';
+    const flow=r.phase==='acc'&&r.sipAmt>0?fmtMo(r.sipAmt):r.phase==='ret'?`−${fmtMo(r.swpAmt)}`:'—';
+    return`<tr${r.phase==='ret'?' style="background:#05150e22"':''}>
+      <td>${pill}</td>
+      <td style="font-weight:700;color:#e2e8f0">${r.age}</td>
+      <td style="font-weight:700;color:#6366f1">${fmt(r.portfolio)}</td>
+      <td style="color:#a5b4fc">${fmt(r.real)}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:10px;color:${r.phase==='acc'?'#6366f1':'#10b981'}">${flow}</td>
+      <td style="color:#f59e0b;font-size:10px">${fmtMo(r.expenseNom)}</td>
+      <td style="color:#64748b;font-size:10px">${note}</td>
+    </tr>`;
+  }).join('');
+
+  // subtitle
+  document.getElementById('journey-sub').textContent=
+    `${S.assetRate}% acc return · ${S.retRate}% post-ret · ${S.inflation}% inflation · Age ${S.age}–${S.retireAge} SIP → ${S.retireAge}–${S.lifeExp} SWP`;
+
+  // hints
+  document.getElementById('h-sipdur').textContent=`${Math.max(0,S.retireAge-S.age)} years of SIP`;
+  document.getElementById('h-retdur').textContent=`${Math.max(0,S.lifeExp-S.retireAge)} years of retirement`;
+  document.getElementById('h-exp-retire').textContent=
+    `At retirement: ${fmtMo(S.expense*Math.pow(1+infl,Math.max(0,S.retireAge-S.age)))}`;
+  if(S.stepUp>0){
+    const finalSIP=S.sip*Math.pow(1+S.stepUp/100,Math.max(0,S.retireAge-S.age-1));
+    document.getElementById('h-stepup').textContent=`Grows to ${fmtMo(finalSIP)} at retirement`;
+  } else {
+    document.getElementById('h-stepup').textContent='Flat SIP throughout';
+  }
+}
+
+// ═══════════════════════════════════════════
+// ASSET BUTTONS
+// ═══════════════════════════════════════════
+function buildAssetBtns(){
+  const c=document.getElementById('asset-btns');c.innerHTML='';
+  ASSETS.forEach(a=>{
+    const active=a.id===S.assetId;
+    const b=document.createElement('button');b.className='btn';
+    b.innerHTML=`${a.label} <span style="opacity:0.7">${a.r}%</span>`;
+    b.style.borderColor=active?a.color:'#334155';
+    b.style.background=active?a.color+'22':'transparent';
+    b.style.color=active?a.color:'#475569';
+    b.onclick=()=>{
+      S.assetId=a.id;
+      S.assetRate=a.r;
+      setSliderAndDisplay('r-asset-rate','v-asset-rate',a.r,v=>v.toFixed(1));
+      document.getElementById('h-asset-hint').textContent=`${a.label} preset`;
+      buildAssetBtns();
+      updateAll();
+    };
+    c.appendChild(b);
+  });
+}
+
+function clearAssetSelection(){
+  S.assetId=null;
+  document.querySelectorAll('#asset-btns .btn').forEach(b=>{
+    b.style.borderColor='#334155';b.style.background='transparent';b.style.color='#475569';
+  });
+  document.getElementById('h-asset-hint').textContent='Custom return rate';
+}
+
+// ═══════════════════════════════════════════
+// SCENARIO BUTTONS (inflation presets)
+// ═══════════════════════════════════════════
+function activateScenario(btn){
+  document.querySelectorAll('#scenario-btns .btn').forEach(b=>{
+    b.style.borderColor='#334155';b.style.background='transparent';b.style.color='#64748b';
+  });
+  if(!btn)return;
+  const col=btn.dataset.col;
+  btn.style.borderColor=col;btn.style.background=col+'22';btn.style.color=col;
+  S.inflation=parseFloat(btn.dataset.inf);
+  setSliderAndDisplay('r-infl','v-infl',S.inflation,v=>v.toFixed(2));
+}
+function clearScenarioSelection(){
+  document.querySelectorAll('#scenario-btns .btn').forEach(b=>{
+    b.style.borderColor='#334155';b.style.background='transparent';b.style.color='#64748b';
+  });
+}
+document.getElementById('scenario-btns').addEventListener('click',e=>{
+  const b=e.target.closest('[data-inf]');
+  if(!b)return;
+  activateScenario(b);
+  updateAll();
+});
+
+// ═══════════════════════════════════════════
+// SLIDER <-> DISPLAY SYNC HELPER
+// ═══════════════════════════════════════════
+function setSliderAndDisplay(rangeId, valId, value, displayFn){
+  const r=document.getElementById(rangeId);
+  const v=document.getElementById(valId);
+  if(r){
+    const clamped=Math.max(parseFloat(r.min),Math.min(parseFloat(r.max),value));
+    r.value=clamped;
+  }
+  if(v&&displayFn) v.textContent=displayFn(value);
+}
+
+// ═══════════════════════════════════════════
+// EDITABLE CONTENT-EDITABLE SPANS
+// Each span: click to edit, Enter/blur to confirm
+// ═══════════════════════════════════════════
+function setupEditable(spanId, rangeId, parseVal, applyVal, displayFn, onDone){
+  const span=document.getElementById(spanId);
+  const range=document.getElementById(rangeId);
+  if(!span)return;
+
+  // Select all text on focus
+  span.addEventListener('focus',()=>{
+    const sel=window.getSelection();
+    const rng=document.createRange();
+    rng.selectNodeContents(span);
+    sel.removeAllRanges();sel.addRange(rng);
+  });
+
+  // Prevent newlines
+  span.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){e.preventDefault();span.blur();}
+    if(e.key==='Escape'){span.blur();}
+  });
+
+  // On blur: parse and apply
+  span.addEventListener('blur',()=>{
+    const raw=span.textContent.trim();
+    const parsed=parseVal(raw);
+    if(parsed!==null&&isFinite(parsed)&&!isNaN(parsed)){
+      applyVal(parsed);
+      span.textContent=displayFn(parsed);
+      if(range){
+        const clamped=Math.max(parseFloat(range.min),Math.min(parseFloat(range.max),parsed));
+        range.value=clamped;
+      }
+      if(onDone) onDone(parsed);
+      updateAll();
+    } else {
+      // Restore previous value
+      span.textContent=displayFn(applyVal(null));
+    }
+  });
+}
+
+// ═══════════════════════════════════════════
+// RANGE SLIDER WIRING
+// ═══════════════════════════════════════════
+function bindRange(rangeId, applyVal, displayFn, spanId, onDone){
+  const range=document.getElementById(rangeId);
+  if(!range)return;
+  range.addEventListener('input',e=>{
+    const v=parseFloat(e.target.value);
+    applyVal(v);
+    if(spanId){
+      const span=document.getElementById(spanId);
+      if(span) span.textContent=displayFn(v);
+    }
+    if(onDone) onDone(v);
+    updateAll();
+  });
+}
+
+// ═══════════════════════════════════════════
+// WIRE ALL CONTROLS
+// ═══════════════════════════════════════════
+
+// ── AGE ──
+bindRange('r-age',v=>S.age=Math.round(v),v=>String(Math.round(v)),'v-age',()=>{
+  S.retireAge=Math.max(S.age+3,S.retireAge);
+  document.getElementById('r-retire').value=S.retireAge;
+  document.getElementById('v-retire').textContent=S.retireAge;
+  S.lifeExp=Math.max(S.retireAge+3,S.lifeExp);
+  document.getElementById('r-life').value=S.lifeExp;
+  document.getElementById('v-life').textContent=S.lifeExp;
+});
+setupEditable('v-age','r-age',s=>{const n=parseInt(s);return(n>=18&&n<=100)?n:null;},v=>{if(v!==null){S.age=v;S.retireAge=Math.max(S.age+3,S.retireAge);S.lifeExp=Math.max(S.retireAge+3,S.lifeExp);document.getElementById('r-retire').value=S.retireAge;document.getElementById('v-retire').textContent=S.retireAge;}return S.age;},v=>String(v));
+
+// ── RETIRE AGE ──
+bindRange('r-retire',v=>S.retireAge=Math.round(v),v=>String(Math.round(v)),'v-retire',()=>{
+  S.age=Math.min(S.age,S.retireAge-3);
+  document.getElementById('r-age').value=S.age;document.getElementById('v-age').textContent=S.age;
+  S.lifeExp=Math.max(S.lifeExp,S.retireAge+3);
+  document.getElementById('r-life').value=S.lifeExp;document.getElementById('v-life').textContent=S.lifeExp;
+});
+setupEditable('v-retire','r-retire',s=>{const n=parseInt(s);return(n>=20&&n<=90)?n:null;},v=>{if(v!==null){S.retireAge=v;S.age=Math.min(S.age,S.retireAge-3);S.lifeExp=Math.max(S.lifeExp,S.retireAge+3);document.getElementById('r-age').value=S.age;document.getElementById('v-age').textContent=S.age;}return S.retireAge;},v=>String(v));
+
+// ── LIFE EXPECTANCY ──
+bindRange('r-life',v=>S.lifeExp=Math.round(v),v=>String(Math.round(v)),'v-life',()=>{
+  S.retireAge=Math.min(S.retireAge,S.lifeExp-3);
+  document.getElementById('r-retire').value=S.retireAge;document.getElementById('v-retire').textContent=S.retireAge;
+});
+setupEditable('v-life','r-life',s=>{const n=parseInt(s);return(n>=50&&n<=120)?n:null;},v=>{if(v!==null){S.lifeExp=v;S.retireAge=Math.min(S.retireAge,S.lifeExp-3);}return S.lifeExp;},v=>String(v));
+
+// ── LUMP SUM ──
+bindRange('r-lump',v=>S.lump=v,v=>fmtCompact(v),'v-lump',v=>{
+  document.getElementById('h-lump-raw').textContent=fmtRaw(v);
+});
+setupEditable('v-lump','r-lump',s=>parseCompact(s),v=>{if(v!==null)S.lump=v;document.getElementById('h-lump-raw').textContent=fmtRaw(S.lump);return S.lump;},v=>fmtCompact(v));
+
+// ── MONTHLY SIP ──
+bindRange('r-sip',v=>S.sip=v,v=>fmtCompact(v),'v-sip',v=>{
+  document.getElementById('h-sip-raw').textContent=fmtRaw(v)+'/mo';
+});
+setupEditable('v-sip','r-sip',s=>parseCompact(s),v=>{if(v!==null)S.sip=v;document.getElementById('h-sip-raw').textContent=fmtRaw(S.sip)+'/mo';return S.sip;},v=>fmtCompact(v));
+
+// ── STEP UP ──
+bindRange('r-stepup',v=>S.stepUp=Math.round(v),v=>v===0?'0':String(Math.round(v)),'v-stepup');
+setupEditable('v-stepup','r-stepup',s=>{const n=parseFloat(s);return(n>=0&&n<=50)?n:null;},v=>{if(v!==null)S.stepUp=v;return S.stepUp;},v=>v===0?'0':String(v));
+
+// ── ASSET RETURN RATE ──
+bindRange('r-asset-rate',v=>{S.assetRate=v;clearAssetSelection();},v=>v.toFixed(1),'v-asset-rate');
+setupEditable('v-asset-rate','r-asset-rate',s=>{const n=parseFloat(s);return(n>=0&&n<=50)?n:null;},v=>{if(v!==null){S.assetRate=v;clearAssetSelection();}return S.assetRate;},v=>v.toFixed(1));
+
+// ── EXPENSE ──
+bindRange('r-expense',v=>S.expense=v,v=>fmtCompact(v),'v-expense');
+setupEditable('v-expense','r-expense',s=>parseCompact(s),v=>{if(v!==null)S.expense=v;return S.expense;},v=>fmtCompact(v));
+
+// ── POST-RET RETURN ──
+bindRange('r-retrate',v=>S.retRate=v,v=>v.toFixed(1),'v-retrate');
+setupEditable('v-retrate','r-retrate',s=>{const n=parseFloat(s);return(n>=0&&n<=50)?n:null;},v=>{if(v!==null)S.retRate=v;return S.retRate;},v=>v.toFixed(1));
+
+// ── INFLATION ──
+bindRange('r-infl',v=>{S.inflation=v;clearScenarioSelection();},v=>v.toFixed(2),'v-infl');
+setupEditable('v-infl','r-infl',s=>{const n=parseFloat(s);return(n>=0&&n<=30)?n:null;},v=>{if(v!==null){S.inflation=v;clearScenarioSelection();}return S.inflation;},v=>v.toFixed(2));
+
+// ═══════════════════════════════════════════
+// CPI BAR CHART
+// ═══════════════════════════════════════════
+new Chart(document.getElementById('barChart').getContext('2d'),{
+  type:'bar',
+  data:{labels:CPI_Y,datasets:[{data:CPI_H,
+    backgroundColor:CPI_H.map(v=>v>6?'#ef444488':v>5?'#f97316aa':'#3b82f6aa'),
+    borderColor:CPI_H.map(v=>v>6?'#ef4444':v>5?'#f97316':'#3b82f6'),
+    borderWidth:1,borderRadius:4}]},
+  options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y+'%'}}},
+    scales:{x:{ticks:{color:'#475569',font:{size:9}},grid:{color:'#1e293b'}},
+            y:{ticks:{color:'#475569',font:{size:9},callback:v=>v+'%'},grid:{color:'#1e293b'},min:0,max:9}}},
+  plugins:[{id:'rl',afterDraw(ch){
+    const{ctx:c,scales:{y,x}}=ch;
+    [[4,'#6366f1','4%'],[6,'#f97316','6%']].forEach(([v,col,lbl])=>{
+      const yp=y.getPixelForValue(v);
+      c.save();c.strokeStyle=col;c.lineWidth=1;c.setLineDash([4,4]);
+      c.beginPath();c.moveTo(x.left,yp);c.lineTo(x.right,yp);c.stroke();
+      c.fillStyle=col;c.font='8px DM Sans';c.textAlign='right';c.textBaseline='bottom';
+      c.fillText(lbl,x.right,yp-1);c.restore();
+    });
+  }}]
+});
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+// Activate default scenario
+activateScenario(document.querySelector('[data-inf="4.58"]'));
+buildAssetBtns();
+// Sync initial hint values
+document.getElementById('h-lump-raw').textContent=fmtRaw(S.lump);
+document.getElementById('h-sip-raw').textContent=fmtRaw(S.sip)+'/mo';
+updateAll();
+</script>
+</body>
+</html>
