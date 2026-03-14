@@ -377,17 +377,24 @@ const T={
 // ═══════════════════════════════════════════
 // FORMAT HELPERS
 // ═══════════════════════════════════════════
+// fmt()   — for corpus / lump-sum values (1 dp in L range)
 function fmt(v){
   if(!isFinite(v)||isNaN(v)||v<0)return'₹0';
   if(v>=10000000)return'₹'+(v/10000000).toFixed(2)+'Cr';
   if(v>=100000)return'₹'+(v/100000).toFixed(1)+'L';
   return'₹'+(v/1000).toFixed(0)+'K';
 }
-function fmtMo(v){return fmt(v)+'/mo';}
-// Compact display for editable value spans
+// fmtMo() — for monthly cash-flow values (2 dp in L range, unambiguous)
+function fmtMo(v){
+  if(!isFinite(v)||isNaN(v)||v<0)return'₹0/mo';
+  if(v>=10000000)return'₹'+(v/10000000).toFixed(2)+'Cr/mo';
+  if(v>=100000)return'₹'+(v/100000).toFixed(2)+'L/mo';
+  return'₹'+(v/1000).toFixed(1)+'K/mo';
+}
+// fmtCompact() — for editable input spans (2 dp in L range for precision)
 function fmtCompact(v){
   if(v>=10000000)return(v/10000000).toFixed(2)+'Cr';
-  if(v>=100000)return(v/100000).toFixed(1)+'L';
+  if(v>=100000)return(v/100000).toFixed(2)+'L';
   if(v>=1000)return(v/1000).toFixed(0)+'K';
   return String(v);
 }
@@ -531,6 +538,17 @@ function updateAll(){
   const gradAcc=ctx.createLinearGradient(0,0,0,400);
   gradAcc.addColorStop(0,'#6366f130');gradAcc.addColorStop(1,'#6366f105');
 
+  // Pre-compute axis units from data so tick callbacks are reliable (no ticks[] dependency)
+  const leftMax=Math.max(...nomVals,...realVals);
+  const rightMax=Math.max(...expVals);
+  function makeAxisFmt(dataMax){
+    if(dataMax>=10000000){const d=10000000;return v=>v===0?'₹0':'₹'+(v/d).toFixed(1)+'Cr';}
+    if(dataMax>=100000)  {const d=100000;  return v=>v===0?'₹0':'₹'+(v/d).toFixed(0)+'L';}
+    return                                        v=>v===0?'₹0':'₹'+(v/1000).toFixed(0)+'K';
+  }
+  const fmtLeft=makeAxisFmt(leftMax);
+  const fmtRight=makeAxisFmt(rightMax);
+
   journeyChartInst=new Chart(ctx,{
     type:'line',
     data:{labels,datasets:[
@@ -582,9 +600,9 @@ function updateAll(){
       },
       scales:{
         x:{ticks:{color:'#475569',font:{size:10},maxTicksLimit:14},grid:{color:'#111827'}},
-        yLeft:{position:'left',ticks:{color:'#475569',font:{size:10},callback:v=>fmt(v)},grid:{color:'#1e293b'},
+        yLeft:{position:'left',ticks:{color:'#475569',font:{size:10},callback:v=>fmtLeft(v)},grid:{color:'#1e293b'},
           title:{display:true,text:'Portfolio Value',color:'#334155',font:{size:9}}},
-        yRight:{position:'right',ticks:{color:'#78716c',font:{size:9},callback:v=>fmt(v)},grid:{drawOnChartArea:false},
+        yRight:{position:'right',ticks:{color:'#78716c',font:{size:9},callback:v=>fmtRight(v)},grid:{drawOnChartArea:false},
           title:{display:true,text:'Monthly Expense',color:'#78716c',font:{size:9}}}
       }
     },
